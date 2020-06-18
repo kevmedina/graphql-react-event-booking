@@ -12,9 +12,33 @@ const User = require("./models/user");
 
 const app = express();
 
-const events = [];
-
 app.use(bodyParser.json());
+
+const events = (eventIds) => {
+  return Event.find({ _id: { $in: eventIds } })
+    .then((events) => {
+      return events.map((event) => {
+        return {
+          ...event._doc,
+          _id: event.id,
+          creator: user.bind(this, event.creator),
+        };
+      });
+    })
+    .catch((err) => {
+      throw err;
+    });
+};
+
+const user = (userId) => {
+  return User.findById(userId)
+    .then((user) => {
+      return { ...user._doc, _id: user.id };
+    })
+    .catch((err) => {
+      throw err;
+    });
+};
 
 app.use(
   "/graphql",
@@ -26,12 +50,14 @@ app.use(
             description: String!
             price: Float!
             date: String!
+            creator: User!
         }
 
         type User {
             _id: ID!
             email: String!
             password: String
+            createdEvents: [Event!]
         }
 
         input EventInput {
@@ -65,7 +91,11 @@ app.use(
         return Event.find()
           .then((events) => {
             return events.map((event) => {
-              return { ...event._doc, _id: event.id };
+              return {
+                ...event._doc,
+                _id: event.id,
+                creator: user.bind(this, event._doc.creator),
+              };
             });
           })
           .catch((err) => {
